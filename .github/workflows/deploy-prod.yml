@@ -1,0 +1,43 @@
+name: deploy on push production branch
+on:
+  push:
+    branches:
+      - prod
+jobs:
+  deploy-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: check out the code to build server
+        uses: actions/checkout@v3
+
+      # Ubuntu 权限修复步骤（必须加，否则会写入失败）
+      - name: set write permission
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            sudo chown -R ubuntu:ubuntu /var/www/html
+            sudo chmod -R 755 /var/www/html
+
+      - name: copy file to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "./html/*"
+          target: "/var/www/html"
+          strip_components: 1
+
+      # 恢复权限
+      - name: restore permission
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            sudo chown -R root:root /var/www/html
